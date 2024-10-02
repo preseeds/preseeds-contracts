@@ -172,6 +172,10 @@ contract Token is ERC20 {
         }
     }
 
+    function getTokenInfo() external view returns (string memory, string memory, string memory, string memory, uint256, uint256, uint256, uint256, address, bool) {
+        return (name(), symbol(), imageUrl, description, totalSupply(), address(this).balance, unlockDate, targetLiquidity, creatorAddress, isPoolCreated);
+    }
+
     fallback() external {
         mint();
     }
