@@ -32,9 +32,9 @@ contract Factory is Ownable {
         creationFee = creationFeeInput;
     }
 
-    function createToken(string memory name, string memory symbol, string memory image, uint256 unlockTime, uint256 targetLiquidity, bytes32 salt) external payable returns (address token) {
+    function createToken(string memory name, string memory symbol, string memory image, string memory description, uint256 unlockTime, uint256 targetLiquidity, bytes32 salt) external payable returns (address token) {
         require(msg.value >= creationFee, "Factory: insufficient fee");
-        token = address(new Token{salt: salt}(name, symbol, image,  unlockTime, targetLiquidity, msg.sender));
+        token = address(new Token{salt: salt}(name, symbol, image, description, unlockTime, targetLiquidity, msg.sender));
         tokens[token] = tokens[SENTINEL_ADDRESS];
         tokens[SENTINEL_ADDRESS] = token;
         tokenCount++;

@@ -8,7 +8,7 @@ contract TokenTest is Test {
     Token public token;
 
     function setUp() public {
-        token = new Token("Vicoin", "VIC", "https://vicoin.io", 86400, 10 ether, address(this));
+        token = new Token("Vicoin", "VIC", "https://vicoin.io", "", 86400, 10 ether, address(this));
     }
 
     function testBuy() public {

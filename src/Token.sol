@@ -86,15 +86,17 @@ contract Token is ERC20 {
     uint256 public targetLiquidity;
 
     string public imageUrl;
+    string public description;
 
     address public creatorAddress;
 
     IWETH public weth;
     IBaryonFactory public baryonFactory;
 
-    constructor(string memory name, string memory symbol, string memory image, uint256 unlockTime, uint256 targetLiquidityInput, address creator) ERC20(name, symbol) {
+    constructor(string memory name, string memory symbol, string memory image, string memory descriptionInput, uint256 unlockTime, uint256 targetLiquidityInput, address creator) ERC20(name, symbol) {
         creatorAddress = creator;
         imageUrl = image;
+        description = descriptionInput;
         targetLiquidity = targetLiquidityInput;
         unlockDate = block.timestamp + unlockTime;
 

@@ -18,7 +18,7 @@ contract FactoryTest is Test {
     function testCreateToken() public {
         vm.startPrank(user);
         vm.deal(user, 1 ether);
-        address token = factory.createToken{value: 1 ether}("Test Token", "TST", "https://test.io", 86400, 10 ether, bytes32(0));
+        address token = factory.createToken{value: 1 ether}("Test Token", "TST", "https://test.io", "", 86400, 10 ether, bytes32(0));
         vm.stopPrank();
     }
 
