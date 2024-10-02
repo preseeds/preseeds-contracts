@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.13;
+pragma solidity 0.8.13;
 
 import "openzeppelin/token/ERC20/ERC20.sol";
 
@@ -81,19 +81,24 @@ interface IBaryonFactory {
 
 contract Token is ERC20 {
     uint256 public immutable rate = 10**6; // 1 VIC = 10**6 TOKEN
+    address public immutable factory;
     uint256 public unlockDate;
+    uint256 public targetLiquidity;
 
     string public imageUrl;
 
     address public creatorAddress;
 
     IWETH public weth;
-    IBaryonFactory public factory;
+    IBaryonFactory public baryonFactory;
 
-    constructor(string memory name, string memory symbol, string memory image, uint256 unlockTime, address creator) ERC20(name, symbol) {
+    constructor(string memory name, string memory symbol, string memory image, uint256 unlockTime, uint256 targetLiquidityInput, address creator) ERC20(name, symbol) {
         creatorAddress = creator;
         imageUrl = image;
+        targetLiquidity = targetLiquidityInput;
         unlockDate = block.timestamp + unlockTime;
+
+        factory = msg.sender;
     }
 
     function mint() public payable {
@@ -104,8 +109,8 @@ contract Token is ERC20 {
     function createPool() external {
         require(block.timestamp > unlockDate, "Token: locked");
 
-        address pair = factory.getPair(address(this), address(weth));
-        factory.createPair(address(this), address(weth));
+        address pair = baryonFactory.getPair(address(this), address(weth));
+        baryonFactory.createPair(address(this), address(weth));
 
         uint256 vicBalance = address(this).balance;
         uint256 tokenSupply = totalSupply();
