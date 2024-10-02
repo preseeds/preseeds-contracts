@@ -19,6 +19,7 @@ contract Factory is Ownable {
 
     struct TokenInfo {
         address token;
+        bool isPoolCreated;
         string name;
         string symbol;
         string image;
@@ -56,11 +57,14 @@ contract Factory is Ownable {
     }
     
     function getTokenInfos(uint256 limit) external view returns (TokenInfo[] memory result) {
+        if (limit > tokenCount) {
+            limit = tokenCount;
+        }
         result = new TokenInfo[](limit);
         address current = tokens[SENTINEL_ADDRESS];
         for (uint256 i = 0; i < limit && current != SENTINEL_ADDRESS; i++) {
             Token token = Token(payable(current));
-            result[i] = TokenInfo(current, token.name(), token.symbol(), token.imageUrl(), token.unlockDate(), token.targetLiquidity(), address(token).balance);
+            result[i] = TokenInfo(current, token.isPoolCreated(), token.name(), token.symbol(), token.imageUrl(), token.unlockDate(), token.targetLiquidity(), address(token).balance);
             current = tokens[current];
         }
     }
