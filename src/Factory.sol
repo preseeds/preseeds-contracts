@@ -15,6 +15,7 @@ contract Factory is Ownable {
 
     event UpdateCreationFee(uint256 fee);
     event CreateToken(address indexed token, string name, string symbol, string image, uint256 unlockTime, uint256 targetLiquidity, address indexed creator);
+    event WithdrawFund(address indexed owner, uint256 amount);
 
     struct TokenInfo {
         address token;
@@ -26,13 +27,14 @@ contract Factory is Ownable {
         uint256 raisedAmount;
     }
 
-    constructor() Ownable() {
+    constructor(uint256 creationFeeInput) Ownable() {
         tokens[SENTINEL_ADDRESS] = SENTINEL_ADDRESS;
+        creationFee = creationFeeInput;
     }
 
-    function createToken(string memory name, string memory symbol, string memory image, uint256 unlockTime, uint256 targetLiquidity) external payable returns (address token) {
+    function createToken(string memory name, string memory symbol, string memory image, uint256 unlockTime, uint256 targetLiquidity, bytes32 salt) external payable returns (address token) {
         require(msg.value >= creationFee, "Factory: insufficient fee");
-        token = address(new Token(name, symbol, image,  unlockTime, targetLiquidity, msg.sender));
+        token = address(new Token{salt: salt}(name, symbol, image,  unlockTime, targetLiquidity, msg.sender));
         tokens[token] = tokens[SENTINEL_ADDRESS];
         tokens[SENTINEL_ADDRESS] = token;
         tokenCount++;
@@ -41,7 +43,10 @@ contract Factory is Ownable {
     }
 
     function withdrawFund() external onlyOwner {
-        payable(owner()).transfer(address(this).balance);
+        (bool success, ) = msg.sender.call{value: address(this).balance}("");
+        require(success, "Factory: withdraw failed");
+
+        emit WithdrawFund(msg.sender, address(this).balance);
     }
 
     function setCreationFee(uint256 fee) external onlyOwner {
