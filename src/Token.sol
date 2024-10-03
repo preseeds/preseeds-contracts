@@ -81,7 +81,7 @@ interface IBaryonFactory {
 
 contract Token is ERC20 {
     uint256 public immutable rate = 10**6; // 1 VIC = 10**6 TOKEN
-    address public immutable factory;
+    address payable public immutable factory;
     IWETH public immutable weth = IWETH(address(0x1));
     IBaryonFactory public immutable baryonFactory = IBaryonFactory(address(0x2));
     bytes32 public immutable SENTINEL_MESSAGE = keccak256("vic");
@@ -113,32 +113,57 @@ contract Token is ERC20 {
         targetLiquidity = targetLiquidityInput;
         unlockDate = block.timestamp + unlockTime;
 
-        factory = msg.sender;
+        factory = payable(msg.sender);
         messagesHashes[SENTINEL_MESSAGE] = SENTINEL_MESSAGE;
     }
 
-    function mint() public payable {
-        require(!eligibleForPool(), "Token: locked");
-        require(!isPoolCreated, "Token: pool already created");
-        require(msg.value > 0 && msg.value <= targetLiquidity - address(this).balance, "Token: invalid amount");
-
-        _mint(msg.sender, msg.value * rate);
+    function _transferEth(address payable to, uint256 amount) internal {
+        (bool success, ) = to.call{value: amount}("");
+        require(success, "Transfer failed.");
     }
 
-    function createPool() external {
-        require(!isPoolCreated, "Token: pool already created");
+    function mint() public payable {
+        require(!eligibleForPool(), "Token: Target liquidity reached");
+        require(msg.value > 0, "Token: invalid amount");
+
+        uint256 buyAmount = msg.value;
+
+        if (msg.value > targetLiquidity - address(this).balance) {
+            buyAmount = targetLiquidity - address(this).balance;
+        }
+
+        _mint(msg.sender, buyAmount * rate);
+
+        if (msg.value > buyAmount) {
+            // refund remaining ETH
+            payable(msg.sender).transfer(msg.value - buyAmount);
+        }
+
+        if (eligibleForPool()) {
+            createPool();
+        }
+    }
+
+    function createPool() public {
         require(eligibleForPool(), "Token: locked");
 
         address pair = baryonFactory.getPair(address(this), address(weth));
         if (pair == address(0)) {
             pair = baryonFactory.createPair(address(this), address(weth));
         }
-        uint256 vicBalance = address(this).balance;
-        uint256 tokenSupply = totalSupply();
+        uint256 ethBalance = address(this).balance;
 
-        weth.deposit{value: vicBalance}();
-        assert(weth.transfer(pair, vicBalance));
-        _mint(pair, tokenSupply);
+        uint256 creatorFee = ethBalance * 3 / 1000;
+        _transferEth(payable(creatorAddress), creatorFee);
+        uint256 protocolFee = ethBalance * 3 / 1000;
+        _transferEth(factory, protocolFee);
+
+        uint256 ethLiquidity = ethBalance - creatorFee - protocolFee;
+        uint256 tokenLiquidity = totalSupply();
+
+        weth.deposit{value: ethLiquidity}();
+        assert(weth.transfer(pair, ethLiquidity));
+        _mint(pair, tokenLiquidity);
         IBaryonPair(pair).mint(address(0));
 
         isPoolCreated = true;
@@ -157,7 +182,7 @@ contract Token is ERC20 {
     }
 
     function eligibleForPool() public view returns (bool) {
-        return block.timestamp > unlockDate || address(this).balance >= targetLiquidity;
+        return (block.timestamp > unlockDate || address(this).balance >= targetLiquidity) && !isPoolCreated;
     }
 
     function getMessages(uint256 limit) external view returns (Message[] memory result) {
