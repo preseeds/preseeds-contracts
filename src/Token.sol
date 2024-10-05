@@ -82,7 +82,7 @@ interface IBaryonFactory {
 contract Token is ERC20 {
     uint256 public immutable rate = 10**6; // 1 VIC = 10**6 TOKEN
     address payable public immutable factory;
-    IWETH public immutable weth = IWETH(address(0x1));
+    IWETH public immutable weth = IWETH(address(0xC054751BdBD24Ae713BA3Dc9Bd9434aBe2abc1ce));
     IBaryonFactory public immutable baryonFactory = IBaryonFactory(address(0x2));
     bytes32 public immutable SENTINEL_MESSAGE = keccak256("vic");
 
@@ -123,7 +123,7 @@ contract Token is ERC20 {
     }
 
     function mint() public payable {
-        require(!eligibleForPool(), "Token: Target liquidity reached");
+        require(address(this).balance < targetLiquidity && !isPoolCreated, "Token: Target liquidity reached");
         require(msg.value > 0, "Token: invalid amount");
 
         uint256 buyAmount = msg.value;
@@ -154,9 +154,7 @@ contract Token is ERC20 {
         uint256 ethBalance = address(this).balance;
 
         uint256 creatorFee = ethBalance * 3 / 1000;
-        _transferEth(payable(creatorAddress), creatorFee);
         uint256 protocolFee = ethBalance * 3 / 1000;
-        _transferEth(factory, protocolFee);
 
         uint256 ethLiquidity = ethBalance - creatorFee - protocolFee;
         uint256 tokenLiquidity = totalSupply();
@@ -167,6 +165,9 @@ contract Token is ERC20 {
         IBaryonPair(pair).mint(address(0));
 
         isPoolCreated = true;
+
+        _transferEth(factory, protocolFee);
+        _transferEth(payable(creatorAddress), creatorFee);
 
         emit PoolCreated();
     }
