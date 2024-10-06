@@ -12,10 +12,10 @@ contract TokenTest is Test {
     }
 
     function testBuy() public {
-        (bool success, ) = payable(address(token)).call{value: 1 ether}("");
+        (bool success, ) = payable(address(token)).call{value: 11 ether}("");
         require(success, "TokenTest: buy failed");
         uint256 balance = token.balanceOf(address(this));
-
-        console2.log("balance", balance);
     }
+
+    receive() external payable {}
 }

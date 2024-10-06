@@ -2,6 +2,7 @@
 pragma solidity 0.8.13;
 
 import "openzeppelin/token/ERC20/ERC20.sol";
+import "openzeppelin/security/ReentrancyGuard.sol";
 
 interface IWETH {
     function deposit() external payable;
@@ -78,12 +79,13 @@ interface IBaryonFactory {
     function INIT_CODE_PAIR_HASH() external view returns (bytes32);
 }
 
+import {Test, console2} from "forge-std/Test.sol";
 
-contract Token is ERC20 {
+contract Token is ERC20, ReentrancyGuard {
     uint256 public immutable rate = 10**6; // 1 VIC = 10**6 TOKEN
     address payable public immutable factory;
     IWETH public immutable weth = IWETH(address(0xC054751BdBD24Ae713BA3Dc9Bd9434aBe2abc1ce));
-    IBaryonFactory public immutable baryonFactory = IBaryonFactory(address(0x2));
+    IBaryonFactory public immutable baryonFactory = IBaryonFactory(address(0xFe48A2E66EE2f90334d3565E56E0c9d0081447e8));
     bytes32 public immutable SENTINEL_MESSAGE = keccak256("vic");
 
     bool public isPoolCreated;
@@ -122,30 +124,31 @@ contract Token is ERC20 {
         require(success, "Transfer failed.");
     }
 
-    function mint() public payable {
-        require(address(this).balance < targetLiquidity && !isPoolCreated, "Token: Target liquidity reached");
-        require(msg.value > 0, "Token: invalid amount");
+    function mint() public payable nonReentrant {
+        require(!isPoolCreated, "Token: Pool created");
 
-        uint256 buyAmount = msg.value;
-
-        if (msg.value > targetLiquidity - address(this).balance) {
-            buyAmount = targetLiquidity - address(this).balance;
+        uint256 refundAmount = 0;
+        if (address(this).balance > targetLiquidity) {
+            refundAmount = address(this).balance - targetLiquidity;
         }
+
+        uint256 buyAmount = msg.value - refundAmount;
 
         _mint(msg.sender, buyAmount * rate);
 
-        if (msg.value > buyAmount) {
+        if (refundAmount > 0) {
             // refund remaining ETH
-            payable(msg.sender).transfer(msg.value - buyAmount);
+            payable(msg.sender).transfer(refundAmount);
         }
 
         if (eligibleForPool()) {
             createPool();
         }
+
     }
 
     function createPool() public {
-        require(eligibleForPool(), "Token: locked");
+        require(eligibleForPool(), "Token: ineligible for pool");
 
         address pair = baryonFactory.getPair(address(this), address(weth));
         if (pair == address(0)) {
