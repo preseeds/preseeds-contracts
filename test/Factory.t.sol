@@ -6,7 +6,7 @@ import {Factory} from "../src/Factory.sol";
 
 contract FactoryTest is Test {
     Factory public factory;
-    address owner = address(0x1);
+    address owner = address(0x11);
     address user = address(0x2);
 
     function setUp() public {
@@ -18,7 +18,7 @@ contract FactoryTest is Test {
     function testCreateToken() public {
         vm.startPrank(user);
         vm.deal(user, 1 ether);
-        address token = factory.createToken{value: 1 ether}("Test Token", "TST", "https://test.io", "", 86400, 10 ether, bytes32(0));
+        factory.createToken{value: 1 ether}("Test Token", "TST", "https://test.io", "", 86400, 10 ether, bytes32(0));
         vm.stopPrank();
     }
 
