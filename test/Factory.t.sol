@@ -30,4 +30,12 @@ contract FactoryTest is Test {
         require(address(owner).balance == 1 ether, "FactoryTest: withdraw failed");
         vm.stopPrank();
     }
+
+    function testUpdateCreationFee() public {
+        vm.startPrank(owner);
+        factory.setCreationFee(2 ether);
+        
+        require(factory.creationFee() == 2 ether, "FactoryTest: update failed");
+        vm.stopPrank();
+    }
 }
