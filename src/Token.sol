@@ -79,10 +79,14 @@ interface IBaryonFactory {
     function INIT_CODE_PAIR_HASH() external view returns (bytes32);
 }
 
-import {Test, console2} from "forge-std/Test.sol";
+interface IOwnable {
+    function owner() external view returns (address);
+}
 
 contract Token is ERC20, ReentrancyGuard {
     uint256 public immutable rate = 10**6; // 1 VIC = 10**6 TOKEN
+    uint256 public immutable creatorFeePercent = 20; // 2%
+    uint256 public immutable protocolFeePercent = 20; // 2%
     address payable public immutable factory;
     IWETH public immutable weth = IWETH(address(0xC054751BdBD24Ae713BA3Dc9Bd9434aBe2abc1ce));
     IBaryonFactory public immutable baryonFactory = IBaryonFactory(address(0xFe48A2E66EE2f90334d3565E56E0c9d0081447e8));
@@ -119,9 +123,11 @@ contract Token is ERC20, ReentrancyGuard {
         messagesHashes[SENTINEL_MESSAGE] = SENTINEL_MESSAGE;
     }
 
-    function _transferEth(address payable to, uint256 amount) internal {
+    function _transferEth(address payable to, uint256 amount, bool ignoreResult) internal {
         (bool success, ) = to.call{value: amount}("");
-        require(success, "Transfer failed.");
+        if (!ignoreResult) {
+            require(success, "Transfer failed.");
+        }
     }
 
     function mint() public payable nonReentrant {
@@ -156,8 +162,8 @@ contract Token is ERC20, ReentrancyGuard {
         }
         uint256 ethBalance = address(this).balance;
 
-        uint256 creatorFee = ethBalance * 3 / 1000;
-        uint256 protocolFee = ethBalance * 3 / 1000;
+        uint256 creatorFee = ethBalance * creatorFeePercent / 1000;
+        uint256 protocolFee = ethBalance * protocolFeePercent / 1000;
 
         uint256 ethLiquidity = ethBalance - creatorFee - protocolFee;
         uint256 tokenLiquidity = totalSupply();
@@ -169,8 +175,8 @@ contract Token is ERC20, ReentrancyGuard {
 
         isPoolCreated = true;
 
-        _transferEth(factory, protocolFee);
-        _transferEth(payable(creatorAddress), creatorFee);
+        _transferEth(payable(IOwnable(factory).owner()), protocolFee, true);
+        _transferEth(payable(creatorAddress), creatorFee, true);
 
         emit PoolCreated();
     }
