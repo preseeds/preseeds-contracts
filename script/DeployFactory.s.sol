@@ -12,7 +12,7 @@ contract DeployFactoryScript is Script {
 
         vm.startBroadcast(deployerPrivateKey);
 
-        Factory factory = new Factory(3 ether);
+        Factory factory = new Factory(0);
         console.log("Factory deployed at: ", address(factory));
 
         vm.stopBroadcast();
